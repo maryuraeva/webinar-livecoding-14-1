@@ -1,3 +1,5 @@
+const bcrypt = require('bcrypt');
+
 const User = require('../models/user');
 
 // GET /users
@@ -11,9 +13,16 @@ const getUsers = (req, res, next) => {
 const createUser = (req, res, next) => {
   const { username, email, password } = req.body;
 
-  User.create({ username, email, password })
+  bcrypt.hash(password, 10)
+    .then((hash) => User.create({ username, email, password: hash }))
     .then((user) => res.send(user))
-    .catch(next);
+    .catch((err) => {
+      if (err.code === 11000) {
+        res.status(409).send({ message: 'Пользователь с такими данными уже существует' });
+      } else {
+        next(err);
+      }
+    });
 };
 
 // POST /auth/local
