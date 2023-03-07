@@ -1,6 +1,8 @@
 const bcrypt = require('bcrypt');
+const jsonwebtoken = require('jsonwebtoken');
 
 const User = require('../models/user');
+const { JWT_SECRET } = require('../config');
 
 // GET /users
 const getUsers = (req, res, next) => {
@@ -27,7 +29,24 @@ const createUser = (req, res, next) => {
 
 // POST /auth/local
 const login = (req, res, next) => {
-  res.status(200).send({ message: 'login ok' });
+  const { identifier, password } = req.body;
+
+  // TODO: find user, check password, return jwt and user
+
+  User
+    .findOne({ username: identifier })
+    .orFail(() => res.status(404).send({ message: 'Пользователь не найден' }))
+    .then((user) => bcrypt.compare(password, user.password).then((matched) => {
+      if (matched) {
+        return user;
+      }
+      return res.status(404).send({ message: 'Пользователь не найден' });
+    }))
+    .then((user) => {
+      const jwt = jsonwebtoken.sign({ _id: user._id }, JWT_SECRET, { expiresIn: '7d' });
+      res.send({ user, jwt });
+    })
+    .catch(next);
 };
 
 // GET /users/me
