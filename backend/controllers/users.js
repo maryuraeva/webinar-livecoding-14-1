@@ -31,8 +31,6 @@ const createUser = (req, res, next) => {
 const login = (req, res, next) => {
   const { identifier, password } = req.body;
 
-  // TODO: find user, check password, return jwt and user
-
   User
     .findOne({ username: identifier })
     .orFail(() => res.status(404).send({ message: 'Пользователь не найден' }))
@@ -51,7 +49,27 @@ const login = (req, res, next) => {
 
 // GET /users/me
 const getCurrentUser = (req, res, next) => {
-  res.status(200).send({ message: 'getCurrentUser ok' });
+  // TODO: check token, getUser from DB, return username and email
+
+  const { authorization } = req.headers;
+
+  if (!authorization || !authorization.startsWith('Bearer')) {
+    res.status(401).send({ message: 'Необходима авторизация' });
+  }
+
+  let payload;
+  const jwt = authorization.replace('Bearer ', '');
+  try {
+    payload = jsonwebtoken.verify(jwt, JWT_SECRET);
+  } catch (err) {
+    res.status(401).send({ message: 'Необходима авторизация' });
+  }
+
+  User
+    .findById(payload._id)
+    .orFail(() => res.status(404).send({ message: 'Пользователь не найден' }))
+    .then((user) => res.send(user))
+    .catch(next);
 };
 
 module.exports = {
